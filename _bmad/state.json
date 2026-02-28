@@ -1,0 +1,21 @@
+{
+  "projectName": "Agent Marketplace",
+  "projectPath": "/home/ju/projects/agent-marketplace",
+  "createdAt": "2026-02-27T20:33:56.689Z",
+  "currentPhase": "analysis",
+  "activeWorkflow": null,
+  "completedWorkflows": [
+    {
+      "id": "create-product-brief",
+      "agentId": "analyst",
+      "outputFile": "/home/ju/projects/agent-marketplace/_bmad-output/planning-artifacts/product-brief.md",
+      "completedAt": "2026-02-27T20:58:22.546Z"
+    },
+    {
+      "id": "quick-spec",
+      "agentId": "quick-flow-solo-dev",
+      "outputFile": "/home/ju/projects/agent-marketplace/_bmad-output/implementation-artifacts/tech-spec-wip.md",
+      "completedAt": "2026-02-27T21:06:45.246Z"
+    }
+  ]
+}
