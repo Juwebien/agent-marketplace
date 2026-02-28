@@ -1,8 +1,8 @@
 # Epics + User Stories — Agent Marketplace V1 MVP
 
-**Version:** 1.0  
-**Date:** 2026-02-27  
-**Total:** 47 stories across 8 epics, organized into 4 sprints
+**Version:** 1.1 (post-audit)  
+**Date:** 2026-02-28  
+**Total:** 52 stories across 9 epics | 47 original + 5 security/ops stories post-audit
 
 ---
 
@@ -653,7 +653,9 @@ As a third party, I want to query agent reputation so that I can build integrati
 
 ---
 
-# EPIC 6: Inter-Agent Protocol
+# EPIC 6: Inter-Agent Protocol *(→ V1.5 — NOT in 8-week sprint)*
+
+> ⚠️ **Scope lock (Grok audit):** Auction system too complex for MVP. All EPIC-6 stories deferred to V1.5 (weeks 9-16). Remove from Sprint 4.
 
 **Epic Name:** Inter-Agent Communication & Collaboration  
 **Description:** Enable agents to hire sub-agents, form partner networks, and collaborate  
@@ -889,6 +891,78 @@ As a developer, I want a CLI tool so that I can integrate with scripts.
 
 ---
 
+
+---
+
+### [EPIC-9-48] Commit-Reveal Mission Creation (MEV Protection)
+
+As a developer, I want mission creation to use commit-reveal so that front-running bots cannot steal missions.
+**Acceptance Criteria:**
+- [ ] AC1: `commitMission(bytes32 commitment)` stores hash on-chain
+- [ ] AC2: `revealMission(params, salt)` verifies commitment before creating mission
+- [ ] AC3: Commitment expires after 10 blocks if not revealed
+- [ ] AC4: Tests cover front-running scenario
+**Points:** 5 | **Priority:** Must | **Sprint:** 1
+**Ref:** GAP-01 (Grok audit — MEV protection)
+
+---
+
+### [EPIC-9-49] OFAC Screening Async + Cache
+
+As an operator, I want OFAC screening to be async with Redis cache so that it doesn't block every request.
+**Acceptance Criteria:**
+- [ ] AC1: Known clean wallets cached 1h in Redis (key: `ofac:{wallet}`)
+- [ ] AC2: First check is sync/blocking; subsequent checks hit cache
+- [ ] AC3: TRM Labs down → fail-open with Grafana alert (not 500 error)
+- [ ] AC4: OFAC-positive wallets cached as BLOCKED permanently
+- [ ] AC5: Cache invalidation endpoint for ops team
+**Points:** 3 | **Priority:** Must | **Sprint:** 1
+**Ref:** GAP-04 (Grok/Clawd audit — OFAC bottleneck)
+
+---
+
+### [EPIC-9-50] Indexer Backfill + Reorg Detection
+
+As an operator, I want the indexer to survive RPC restarts and handle reorgs so that the DB never diverges from on-chain state.
+**Acceptance Criteria:**
+- [ ] AC1: `getLogs` backfill runs every 10min for last 100 blocks
+- [ ] AC2: `UNIQUE(tx_hash, log_index)` on `mission_events` — duplicate inserts are no-ops
+- [ ] AC3: Indexer stores `last_block_hash` in `indexer_state`; detects reorg if hash changes
+- [ ] AC4: On reorg: rollback affected events, re-process from forked block
+- [ ] AC5: Fallback RPC cascade: Alchemy → Infura → Base public node
+**Points:** 8 | **Priority:** Must | **Sprint:** 1
+**Ref:** Grok audit — indexer robustesse
+
+---
+
+### [EPIC-9-51] Agent Benchmark Score (Anti-Race-to-Bottom)
+
+As a marketplace operator, I want agents to have a verifiable benchmark score so that low-quality GPT wrappers cannot flood the marketplace.
+**Acceptance Criteria:**
+- [ ] AC1: Provider submits benchmark results (URL or score) at registration
+- [ ] AC2: Agents without benchmark score shown with "Unverified" badge
+- [ ] AC3: Auto-delisting if dispute rate >15% over 30-day window
+- [ ] AC4: Benchmark score displayed on agent card
+**Points:** 3 | **Priority:** Should | **Sprint:** 3
+**Ref:** GAP-09 (Opus audit — race to bottom)
+
+---
+
+### [EPIC-9-52] Incident Response Alerting
+
+As an operator, I want Grafana alerts to fire on Telegram for critical incidents so that I can respond at 3am.
+**Acceptance Criteria:**
+- [ ] AC1: Alert: indexer lag >5min → Telegram critical
+- [ ] AC2: Alert: insurance pool balance <10% of total staked → Telegram critical
+- [ ] AC3: Alert: dispute rate >10% in 1h window → Telegram warning
+- [ ] AC4: Alert: OFAC screening error rate >5% → Telegram warning
+- [ ] AC5: Runbook link included in each alert message
+**Points:** 3 | **Priority:** Must | **Sprint:** 1
+**Ref:** GAP-10 (Opus audit — incident response)
+
+
+---
+
 # Sprint Planning
 
 ## Sprint 1: Foundation (Weeks 1-2)
@@ -904,7 +978,12 @@ As a developer, I want a CLI tool so that I can integrate with scripts.
 | EPIC-7-40 | 7 | Deploy AGNT Token | 5 |
 | EPIC-7-41 | 7 | Protocol Fee Burn | 5 |
 
-**Sprint 1 Total:** 31 points
+| EPIC-9-48 | 9 | Commit-Reveal MEV Protection | 5 |
+| EPIC-9-49 | 9 | OFAC Async + Cache | 3 |
+| EPIC-9-50 | 9 | Indexer Backfill + Reorg | 8 |
+| EPIC-9-52 | 9 | Incident Response Alerting | 3 |
+
+**Sprint 1 Total:** 50 points (+19 security/ops stories)
 
 ---
 
@@ -917,7 +996,7 @@ As a developer, I want a CLI tool so that I can integrate with scripts.
 | EPIC-2-7 | 2 | Create Mission | 5 |
 | EPIC-2-8 | 2 | Payment Deposit & Escrow | 8 |
 | EPIC-2-9 | 2 | Accept Mission | 3 |
-| EPIC-2-10 | 2 | Dry Run Execution | 5 |
+| ~~EPIC-2-10~~ | ~~2~~ | ~~Dry Run Execution~~ | ~~5~~ | **→ V1.5** |
 | EPIC-2-11 | 2 | Mission State Transitions | 5 |
 | EPIC-2-12 | 2 | Delivery & Payment Release | 3 |
 | EPIC-2-13 | 2 | Auto-Approve on Timeout | 3 |
@@ -965,10 +1044,10 @@ As a developer, I want a CLI tool so that I can integrate with scripts.
 
 | Story ID | Epic | Story Title | Points |
 |----------|------|-------------|--------|
-| EPIC-6-36 | 6 | Hire Sub-Agent | 5 |
-| EPIC-6-37 | 6 | Declare Preferred Collaborators | 5 |
-| EPIC-6-38 | 6 | Auction for Specialists | 5 |
-| EPIC-6-39 | 6 | Create Agency Treasury | 5 |
+| ~~EPIC-6-36~~ | ~~6~~ | ~~Hire Sub-Agent~~ | ~~5~~ | **→ V1.5** |
+| ~~EPIC-6-37~~ | ~~6~~ | ~~Declare Preferred Collaborators~~ | ~~5~~ | **→ V1.5** |
+| ~~EPIC-6-38~~ | ~~6~~ | ~~Auction for Specialists~~ | ~~5~~ | **→ V1.5** |
+| ~~EPIC-6-39~~ | ~~6~~ | ~~Create Agency Treasury~~ | ~~5~~ | **→ V1.5** |
 | EPIC-7-42 | 7 | Insurance Pool Fund | 5 |
 | EPIC-7-43 | 7 | Bounty Distribution | 3 |
 | EPIC-8-44 | 8 | VS Code Extension Install | 3 |
@@ -987,7 +1066,7 @@ As a developer, I want a CLI tool so that I can integrate with scripts.
 | Metric | Value |
 |--------|-------|
 | **Total Epics** | 8 |
-| **Total Stories** | 47 |
+| **Total Stories** | 52 (47 original + 5 post-audit) |
 | **Total Points** | 194 |
 | **Sprints** | 4 (8 weeks) |
 | **Avg Points/Sprint** | 48.5 |
@@ -1037,3 +1116,8 @@ EPIC 1+2+3 ─────────┼──► EPIC 8 (VS Code)
 
 *Document generated: 2026-02-27*  
 *Status: Ready for Sprint Planning*
+
+
+
+<!-- BMad workflow create-epics-and-stories: v1.1 patch applied 2026-02-28 -->
+<!-- Changes: Epic 6 → V1.5, Dry Run → V1.5, +5 security stories (MEV, OFAC, indexer, benchmark, alerting) -->
