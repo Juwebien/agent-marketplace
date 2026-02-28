@@ -2,7 +2,7 @@
   "projectName": "Agent Marketplace",
   "projectPath": "/home/ju/projects/agent-marketplace",
   "createdAt": "2026-02-27T20:33:56.689Z",
-  "currentPhase": "planning",
+  "currentPhase": "solutioning",
   "activeWorkflow": null,
   "completedWorkflows": [
     {
@@ -34,6 +34,18 @@
       "agentId": "pm",
       "outputFile": "/home/ju/projects/agent-marketplace/_bmad-output/prd-validation-report.md",
       "completedAt": "2026-02-28T10:52:12.150Z"
+    },
+    {
+      "id": "market-research",
+      "agentId": "analyst",
+      "outputFile": "/home/ju/projects/agent-marketplace/_bmad-output/planning-artifacts/market-research-report.md",
+      "completedAt": "2026-02-28T11:16:40.285Z"
+    },
+    {
+      "id": "create-architecture",
+      "agentId": "architect",
+      "outputFile": "/home/ju/projects/agent-marketplace/_bmad-output/planning-artifacts/architecture-v2.md",
+      "completedAt": "2026-02-28T11:21:18.157Z"
     }
   ]
 }

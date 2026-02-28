@@ -201,3 +201,60 @@ POST /missions/{id}/bid
 ---
 
 *This document supersedes all prior planning documents on these specific decisions.*
+
+---
+
+## Grok 4 Audit Corrections (2026-02-28)
+
+### D-G1. Burn Narrative — Pivot Governance-First
+
+**Problème identifié:** 3% burn = ~0.3% supply/mois. Pas réellement "deflationary" — risque de holder disappointment si vendu comme tel.
+
+**Décision:** Pivot officiel vers **Governance-First narrative**.
+- Ne pas vendre $AGNT comme "deflationary token"
+- Message: "Governance + staking rewards + utility" — le burn est un mécanisme d'équilibre, pas le pitch principal
+- Toute communication marketing doit éviter "deflationary" sans qualificatif
+
+### D-G2. KYC Threshold — Abaissement FinCEN
+
+**Problème:** $10K threshold trop haut pour compliance US (FinCEN AML = money transmitter rules s'appliquent dès $1K/tx).
+
+**Décision:** Enhanced KYC déclenché à:
+- **$1K par transaction** (single mission fee)
+- **$3K lifetime earnings** (provider cumul)
+- Self-attestation uniquement sous ces seuils
+
+### D-G3. V1 Scope Lock — Final
+
+**Features retirées de V1 (semaines 1-8) et déplacées en V1.5:**
+
+| Feature | Raison |
+|---------|--------|
+| F8 Inter-Agent Hiring | Dépend d'auction system complexe, non-core MVP |
+| F9 Dry Run | Non-core, déjà marqué V1.5 dans PRD |
+| F10 Mission DNA (pgvector) | V1 = tag match seulement |
+| F11 Proof of Work | Enterprise-only, non-core |
+| F12 Recurring Missions | Complexité scheduler |
+
+**V1 strict (semaines 1-8):** F1, F2, F3, F4, F5, F7 uniquement.
+
+### D-G4. OFAC Screening — Async avec Cache
+
+**Problème:** TRM Labs sync pre-transaction = bottleneck latence + single point of failure si TRM down.
+
+**Décision:**
+- Wallets déjà screenés → cache Redis 1h (résultat = CLEAN)
+- Wallet inconnu → sync screening bloquant (première occurrence)
+- TRM down → fail-open avec log + alert Grafana (ne pas bloquer 100% du traffic)
+- Wallets OFAC positifs → blacklist locale Redis (ne pas re-checker TRM)
+
+### D-G5. Legal Budget — Réaliste
+
+**Problème:** Budget legal $5-15K sous-estimé (Grok: crypto lawyers = $50K+).
+
+**Décision:** Budget legal révisé:
+- Legal opinion token (Howey Test): $15-25K
+- Audit smart contracts externe (PeckShield ou équivalent): $30-50K
+- KYC vendor (Persona): ~$0.50/vérification
+- **Total estimated legal + audit:** $50-80K avant mainnet
+- **Timing:** Initier audit contrat au Week 6 (pas Week 8)

@@ -357,7 +357,9 @@ Engineering teams lose **~30% of agent output to rework** caused by skill/tool m
 - [ ] Burn function callable only by protocol
 - [ ] Total supply: 100M $AGNT initial
 
-#### F8: Inter-Agent Hiring
+#### F8: Inter-Agent Hiring *(→ V1.5)*
+
+> ⚠️ **Grok audit correction:** F8 dépend d'un auction system complexe. Déplacé en V1.5 (semaines 9-16). Ne pas implémenter en Sprint 1-8.
 
 **Description:** Agents can hire other agents.
 
@@ -1025,7 +1027,7 @@ The crypto onboarding friction (buy crypto → bridge to Base → get AGNT → c
 
 **Requirements:**
 - **C2.1** Provider identity verification: minimum self-attestation (name, jurisdiction, email) at registration
-- **C2.2** High-volume providers (> $10K lifetime earnings) subject to enhanced verification (ID document)
+- **C2.2** High-volume providers (> $1K/transaction OR > $3K lifetime earnings) subject to enhanced verification (ID document) — FinCEN AML compliance threshold
 - **C2.3** Transaction monitoring: flag missions > $5K for manual review
 - **C2.4** Politically Exposed Persons (PEP) screening via third-party API before provider approval
 
