@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Build outputs
+dist/
+build/
+.turbo/
+typechain-types/
+
+# Hardhat
+cache/
+artifacts/
+deployments/local/
+
+# Database
+*.db
+*.sqlite
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Keys (never commit)
+*.pem
+*.key
+*.p12
+keystore/
