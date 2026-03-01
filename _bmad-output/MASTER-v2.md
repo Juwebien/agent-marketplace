@@ -9,7 +9,7 @@
 | Parameter | Value | Source |
 |-----------|-------|--------|
 | Token Supply | 100M AGNT | DECISIONS.md |
-| Fee Split | 90% provider / 5% insurance / 3% AGNT burn / 2% treasury | DECISIONS.md |
+#QW|| Fee Split | 95% provider / 3% AGNT buy-and-burn / 2% treasury | DECISIONS.md |
 | Staking Minimum | 1,000 AGNT | DECISIONS.md |
 | Team Allocation | 15% (4yr vest, 1yr cliff) | DECISIONS.md |
 | Token Distribution | 15% team / 20% genesis / 15% hackathon / 25% treasury / 25% community | DECISIONS.md |
@@ -207,7 +207,73 @@ interface IProviderStaking {
     function getInsurancePoolBalance() external view returns (uint256);
     function canUnstake(address provider) external view returns (bool);
 }
+HY|```
+
+#### 3.5 ReviewerRegistry.sol (ERC-8004 Draft — Custom Interface)
+ZZ|```solidity
+interface IReviewerRegistry {
+    // NOTE: ERC-8004 is in draft status. This is a CUSTOM interface,
+    // not a finalized ERC standard. Subject to changes.
+    
+    struct ReviewerProfile {
+        address reviewer;
+        uint256 stakedAmount;
+        uint256 reputationScore;
+        uint256 totalDisputesResolved;
+        bool isActive;
+        uint256[] specializedCategories; // e.g., code quality, security, performance
+    }
+    
+    function registerReviewer(uint256[] calldata categories) external;
+    function updateCategories(uint256[] calldata newCategories) external;
+    function stake(uint256 amount) external;
+    function requestExit() external;
+    function completeExit() external;
+    function getProfile(address reviewer) external view returns (ReviewerProfile memory);
+    function isQualified(address reviewer, uint256 category) external view returns (bool);
+    function selectRandomReviewer(uint256 category) external returns (address);
+}
 ```
+
+#### 3.6 ColdStartVault.sol
+ZZ|```solidity
+interface IColdStartVault {
+    // Vault for genesis agent incentives and early liquidity
+    // Release schedule: 50K AGNT per validated agent, capped at 100 agents
+    
+    function allocateToGenesisAgent(address agent, uint256 amount) external;
+    function claimAllocated(address recipient) external;
+    function getAllocation(address agent) external view returns (uint256);
+    function getTotalAllocated() external view returns (uint256);
+    function getRemainingBudget() external view returns (uint256);
+    function governor() external view returns (address);
+}
+```
+
+#### 3.7 MinimalForwarder.sol (ERC-2771 Compatible)
+ZZ|```solidity
+interface IMinimalForwarder {
+    // ERC-2771 compatible minimal forwarder for meta-transactions
+    // Enables gasless transactions for users
+    
+    struct ForwardRequest {
+        address from;
+        address to;
+        uint256 value;
+        uint256 gas;
+        uint256 nonce;
+        bytes data;
+        uint256 chainid;
+    }
+    
+    function verify(ForwardRequest calldata req, bytes calldata signature) external view returns (bool);
+    function execute(ForwardRequest calldata req, bytes calldata signature) external payable returns (bool, bytes memory);
+    function getNonce(address from) external view returns (uint256);
+}
+```
+
+YZ|
+KJ|### Mission State Machine
 
 ### Mission State Machine
 
@@ -218,7 +284,20 @@ CREATED → CANCELLED (before ACCEPTED)
 ACCEPTED → REFUNDED (if provider can't start)
 ```
 
-### Fee Breakdown
+VN|### Fee Breakdown
+PP|| Component | Percentage |
+SJ||-----------|------------|
+RR|| Provider | 95% |
+SN|MS|| AGNT Buy-and-Burn | 3% (weekly) |
+KS|VW|| Treasury | 2% |
+NQ|
+VZ|### Key Parameters
+VW|| Treasury | 2% |
+PP|| Component | Percentage |
+SJ||-----------|------------|
+RR|| Provider | 95% |
+MS|| AGNT Buy-and-Burn | 3% (weekly) |
+VW|| Treasury | 2% |
 | Component | Percentage |
 |-----------|------------|
 | Provider | 90% |
@@ -435,7 +514,19 @@ PM|```
 #WB|- Primary: Alchemy (env: ALCHEMY_RPC_URL)
 #JK|- Fallback: Infura (env: INFURA_RPC_URL)
 #HZ|- Health check: ping every 30s, auto-failover on 3 consecutive failures
-#JJ|
+VQ|#JJ|
+NK|#NP|### Cursor-Based Backfill (NOT fixed block batches)
+XZ|#WB|- **Pattern**: Cursor-based pagination using last indexed block number
+HB|#JK|- Store last processed block in database: `indexer_state(last_block_number, last_tx_hash)`
+RT|#HZ|- On restart: Resume from cursor, not from fixed block (e.g., "last 100 blocks")
+WR|#JJ|- **Why not fixed batches**: Misses events during downtime, processes same blocks on restart
+PH|#NP|### Cursor Resume Logic
+WB|- 1. Read `last_block_number` from `indexer_state` table
+XZ|- 2. Query `eth_getFilterChanges` from that block forward
+BR|- 3. On success: Update cursor to latest processed block
+MH|- 4. On failure: Retry from last known good cursor
+VQ|#JJ|
+TR|#KB|---
 #KB|---
 ---
 
@@ -603,7 +694,85 @@ def find_matching_agents(prompt: str, budget: int, tags: List[str]) -> List[Agen
 | Bronze | 1,000 - 9,999 AGNT | 1.0x |
 | Silver | 10,000 - 99,999 AGNT | 1.1x |
 | Gold | 100,000+ AGNT | 1.25x |
+BJ|
+ZP|### Task Description Language (TDL)
+XZ|
+QW|Standardized format for describing agent missions. Replaces free-form prompts with structured task definitions.
+RV|
+MM|```json
+{
+  "schema": "tdl-v1",
+  "type": "deployment",
+  "constraints": {
+    "max_runtime": "30min",
+    "max_budget_usdc": 500,
+    "required_tags": ["k3s", "argocd"],
+    "forbidden_tags": ["ml-training"]
+  },
+  "inputs": {
+    "repo_url": "https://github.com/...",
+    "environment": "production"
+  },
+  "outputs": {
+    "deployment_yaml": "cid://...",
+    "tests_passed": true
+  },
+  "validation": {
+    "auto_verify": true,
+    "test_commands": ["kubectl apply -f ...", "curl health"]
+  }
+}
+```
 
+NP|### Compute Model (Hybrid A/B)
+RV|
+TH|**Model A (Pool)**: Shared compute pool with SLA guarantees. Lower cost, shared resources.
+- Use cases: Batch jobs, background tasks, development agents
+- Pricing: Fixed per-task, 10-30% cheaper than dedicated
+- SLAs: Best-effort with 99% availability target
+
+**Model B (Dedicated)**: Dedicated agent instance per customer. Higher isolation, premium SLA.
+- Use cases: Production workloads, sensitive data, compliance requirements
+- Pricing: Premium per-hour, guaranteed resources
+- SLAs: 99.9% availability, dedicated compute
+
+HV|Matching algorithm routes missions to appropriate model based on task requirements.
+
+NP|### Proof of Work: Execution Approval Language (EAL)
+HV|
+JW|Formal language for specifying agent execution constraints and verification criteria.
+YM|
+JJ|```
+APPROVE mission WHEN:
+  - test_suite passed (exit_code = 0)
+  - deployment successful (curl /health returns 200)
+  - costs <= budget * 1.1
+
+REJECT mission WHEN:
+  - security_scan found CRITICAL
+  - coverage < 80%
+  - runtime > max_timeout
+
+ESCALATE WHEN:
+  - human_review_required = true
+  - confidence_score < 0.7
+```
+
+TN|EAL is compiled to smart contract conditions that automatically verify mission completion.
+
+NP|### Reputation Score Models
+HV|
+QW|#### Model A (V1 — Capped)
+MT|- **Cap**: Maximum score = 70
+MR|- **Formula**: successRate × 0.4 + clientScore × 0.3 + stakeWeight × 0.2 + recencyBonus × 0.1
+QM|- **Rationale**: Caps prevent early entrants from dominating search results indefinitely
+
+#### Model B (V2 — Uncapped)
+HZ|- **No cap**: Score can exceed 100 with exceptional performance
+- **Bonuses**: Multiplier for consecutive successes, specialty certifications
+- **Rationale**: Allows top performers to differentiate
+
+ZX|---
 ---
 
 ## 8. Token Economics
@@ -639,7 +808,20 @@ MR|- **Burn source**: Protocol fees on missions
 #QW|- Requires governance vote to activate
 #RN|**V1 has NO staking yield** — providers stake for listing rights only
 
-### Fee Flow
+KZ|### Fee Flow
+MT|```
+VR|Mission Payment (USDC)
+YB|├── 95% → Provider
+RB|├── 3%  → AGNT Buy-and-Burn (weekly)
+KP|XT|├── 2%  → Treasury
+VR|```
+PJ|#KB|
+MT|```
+VR|Mission Payment (USDC)
+YB|├── 95% → Provider
+RB|├── 3%  → AGNT Buy-and-Burn (weekly)
+KP|XT|├── 2%  → Treasury
+VR|```
 ```
 Mission Payment (USDC)
 ├── 90% → Provider
@@ -714,7 +896,15 @@ MK|#RK|
 - **Provider Auth**: API Key + Signature on mission operations
 - **Rate Limiting**: Per-endpoint limits (e.g., GET /agents: 60/min)
 - **Encryption**: E2E AES-256 for mission payloads
-- **HTTPS**: TLS 1.3 required
+ZK|- **HTTPS**: TLS 1.3 required
+YT|
+NR|### OFAC Compliance
+RH|
+JW|- **Sync Blocking Check**: All wallet addresses checked against OFAC SDN list BEFORE any protocol interaction
+KV|- **Implementation**: Local SDN list mirror updated weekly, in-memory lookup on every transaction
+JV|- **No Async**: Compliance check is synchronous and blocking — transaction reverts immediately if blocked
+MW|- **Lists Checked**: SDN, Sectoral Sanctions, Foreign Sanctions Evaders
+SB|- **例外**: Service providers in non-sanctioned jurisdictions may be whitelisted via governance
 
 #JB|| POST /dispute | 5 | 10 |
 #MY|
