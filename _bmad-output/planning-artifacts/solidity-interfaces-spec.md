@@ -79,6 +79,9 @@ import "@openzeppelin/contracts/access/IAccessControl.sol";
  *      Permet l'enregistrement et la gestion d'agents avec staking requis.
  */
 interface IAgentRegistry is IERC721, IAccessControl {
+    // Custom errors for edge cases
+    error AgentLockedInMission(bytes32 agentId, bytes32 missionId);
+    error DIDLockedUntilMissionComplete(bytes32 agentId);
     /**
      * @dev Enregistre un nouvel agent AI avec métadonnées.
      * @param agentURI URI des métadonnées de l'agent.
@@ -123,6 +126,12 @@ import "@openzeppelin/contracts/access/IAccessControl.sol";
 interface IMissionEscrow is IAccessControl {
     enum MissionState { CREATED, FUNDED, ACCEPTED, IN_PROGRESS, DELIVERED, COMPLETED, DISPUTED, REFUNDED, CANCELLED }
 
+    // Custom errors for edge cases
+    error MissionAlreadyAccepted(bytes32 missionId);
+    error InsufficientMissionFund(uint256 provided, uint256 minimum);
+    error EALAlreadySubmitted(bytes32 missionId);
+    error AgentHasActiveMissions(bytes32 agentId, uint256 count);
+    error InsurancePoolBelowMinimum(uint256 balance, uint256 minimum);
     /**
      * @dev Commit un hash pour créer une mission (étape 1 anti-MEV).
      * @param commitHash Hash des détails de la mission.
@@ -421,3 +430,35 @@ describe("ReviewerRegistry") {
   it("pool exhaustion: < 3 eligible reviewers → escalate to multisig")
 }
 ```
+
+## Edge Case Handling — Required Behaviors
+
+### 1. Timing Attack (double accept)
+`acceptMission()` uses optimistic lock: first caller wins, second reverts `MissionAlreadyAccepted`.
+
+### 2. Agent Deactivation During Mission
+`deactivateAgent()` reverts `AgentLockedInMission` if agent has status ACCEPTED or IN_PROGRESS missions.
+
+### 3. Multiple EAL Submissions
+`submitEAL()` checks `attestations[missionId].status != Unset`, reverts `EALAlreadySubmitted`.
+
+### 4. Underfunding
+`fundMission()` requires `amount >= MINIMUM_MISSION_AMOUNT` (10 USDC), reverts `InsufficientMissionFund`.
+
+### 5. Insurance Pool Guard
+`openDispute()` checks pool balance >= `MINIMUM_POOL_BALANCE`, reverts `InsurancePoolBelowMinimum` if drained.
+
+### 6. DID Lock During Mission
+`revokeAgent()` succeeds but sets `pendingRevocation = true`. DID change takes effect only after all in-flight missions complete.
+
+### 7. Reorg Protection
+`finalizeDispute()` requires `block.number >= disputeBlock + 10` (10 confirmation minimum).
+
+### 8. Reviewer 2/3 Timeout
+If only 2 reviewers voted after deadline: majority of cast votes wins. If 1-1: escalate to multisig.
+
+### 9. IPFS Dual-Pin Requirement
+`POST /missions/:id/eal` returns 202 (Accepted) until both agent pin + marketplace pin confirmed. Then 201 (Created) and on-chain anchoring proceeds.
+
+### 10. Jeff Minimum Funding
+`MINIMUM_MISSION_AMOUNT = 10_000_000` (10 USDC, 6 decimals). Configurable by governance.
