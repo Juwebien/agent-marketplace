@@ -141,6 +141,71 @@ CREATE INDEX idx_webhook_subscriptions_owner_wallet ON webhook_subscriptions (ow
 CREATE INDEX idx_webhook_subscriptions_active ON webhook_subscriptions (active);
 ```
 
+---
+
+## Post-Brainstorm Additions
+
+### Agent Docker images registry
+```sql
+CREATE TABLE agent_images (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  agent_did     TEXT NOT NULL REFERENCES agents(did),
+  digest        TEXT NOT NULL,           -- sha256:abc123...
+  cosign_sig    TEXT NOT NULL,
+  built_at      TIMESTAMPTZ NOT NULL,
+  registry_url  TEXT NOT NULL,
+  is_stale      BOOLEAN DEFAULT false,   -- true if > 90 days old
+  created_at    TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(agent_did, digest)
+);
+CREATE INDEX idx_agent_images_did ON agent_images(agent_did);
+```
+
+### Reviewer registry
+```sql
+CREATE TABLE reviewer_registry (
+  address           TEXT PRIMARY KEY,
+  staked_amount     NUMERIC(20,6) NOT NULL DEFAULT 0, -- USDC
+  disputes_assigned INTEGER DEFAULT 0,
+  disputes_voted    INTEGER DEFAULT 0,
+  disputes_missed   INTEGER DEFAULT 0,
+  is_genesis        BOOLEAN DEFAULT false,
+  is_active         BOOLEAN DEFAULT true,
+  registered_at     TIMESTAMPTZ DEFAULT now()
+);
+```
+
+### Mission EAL (Execution Attestation Log)
+```sql
+CREATE TABLE mission_eal (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  mission_id    UUID NOT NULL REFERENCES missions(id),
+  eal_hash      TEXT NOT NULL,           -- IPFS CID
+  onchain_tx    TEXT,                    -- tx hash on Base L2
+  trust_level   TEXT NOT NULL DEFAULT 'standard' CHECK (trust_level IN ('standard','elevated')),
+  run_id        TEXT,                    -- GitHub Actions run ID
+  verified_at   TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(mission_id)
+);
+```
+
+### Indexer cursor state
+```sql
+CREATE TABLE indexer_state (
+  id                  SERIAL PRIMARY KEY,
+  last_indexed_block  BIGINT NOT NULL DEFAULT 0,
+  last_block_hash     TEXT,
+  updated_at          TIMESTAMPTZ DEFAULT now()
+);
+INSERT INTO indexer_state (last_indexed_block) VALUES (0) ON CONFLICT DO NOTHING;
+```
+
+### Mission dependencies (DAG V1)
+```sql
+ALTER TABLE missions ADD COLUMN IF NOT EXISTS blocked_by UUID[] DEFAULT '{}';
+```
+
 ```prisma
 // schema.prisma (equivalent Prisma schema for PostgreSQL)
 

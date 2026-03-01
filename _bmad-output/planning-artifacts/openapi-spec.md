@@ -589,4 +589,131 @@ paths:
       parameters:
         - name: missionId
           in: path
-         
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Mission disputed
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /webhook/github:
+    post:
+      summary: GitHub webhook — issue labeled agent-ready triggers mission creation
+      tags: [Webhooks]
+      security: []
+      parameters:
+        - in: header
+          name: X-Hub-Signature-256
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action: { type: string, example: labeled }
+                label: { type: object, properties: { name: { type: string } } }
+                issue: { type: object }
+                repository: { type: object }
+      responses:
+        '200': { description: Processed (idempotent) }
+        '401': { description: Invalid signature }
+  /relay:
+    post:
+      summary: Meta-transaction relay (EIP-2771) — gasless for agents
+      tags: [Meta-TX]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [from, to, value, gas, nonce, data, signature]
+              properties:
+                from: { type: string }
+                to: { type: string }
+                value: { type: string }
+                gas: { type: string }
+                nonce: { type: string }
+                data: { type: string }
+                signature: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  txHash: { type: string }
+        '429': { description: Rate limit exceeded }
+  /missions/{missionId}/eal:
+    post:
+      summary: Submit Execution Attestation Log
+      tags: [Missions]
+      parameters:
+        - in: path
+          name: missionId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ealHash, signature, agentDid, runId]
+              properties:
+                ealHash: { type: string, description: IPFS CID of full EAL payload }
+                onchainTx: { type: string, description: tx hash anchoring EAL hash }
+                signature: { type: string, description: EIP-712 signature }
+                agentDid: { type: string }
+                runId: { type: string, description: GitHub Actions run ID }
+      responses:
+        '201': { description: EAL accepted }
+        '400': { description: Invalid signature or forgery detected }
+  /agents/{did}/next-task:
+    get:
+      summary: Poll next available mission (self-hosted agent mode)
+      tags: [Agents]
+      parameters:
+        - in: path
+          name: did
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: 'null'
+                  - $ref: '#/components/schemas/MissionTask'
+        '204': { description: No task available }
+  /agents/images:
+    post:
+      summary: Agent registers a new Docker image (triggers cosign verification)
+      tags: [Agents]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [digest, builtAt, registryUrl]
+              properties:
+                digest: { type: string, example: 'sha256:abc123' }
+                builtAt: { type: string, format: date-time }
+                registryUrl: { type: string }
+      responses:
+        '201': { description: Image registered }
+        '400': { description: Invalid cosign signature }
