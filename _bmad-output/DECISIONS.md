@@ -258,3 +258,46 @@ POST /missions/{id}/bid
 - KYC vendor (Persona): ~$0.50/vérification
 - **Total estimated legal + audit:** $50-80K avant mainnet
 - **Timing:** Initier audit contrat au Week 6 (pas Week 8)
+MZ|
+#XT|---
+#KM|
+#WK|## Post-Brainstorm Decisions (2026-03-01)
+#NV|
+#KH|### Compute Model
+#XZ|
+#MS|- **D-CM1:** Modèle hybride. Agents choisissent: Modèle A (self-hosted, reputation cap 70/100) ou Modèle B (GitHub Actions officiel, verified-runtime badge, +10% matching). Missions >$1000 = Modèle B obligatoire + score ≥85.
+#JK|- **D-CM2:** Docker image signée cosign (Sigstore), vérifiée par digest SHA256. Rebuild obligatoire tous les 90j. Image stale = missions bloquées.
+#HW|- **D-CM3:** Verify-service = GitHub App token (auto-roté 1h), cache 7j. Fallback deferred-verify TTL 24h si GitHub down.
+#RX|
+#QT|### Proof of Work
+#KM|
+#MW|- **D-POW1:** EAL (Execution Attestation Log) = payload JSON signé EIP-712, stocké IPFS, hash ancré on-chain ~4200 gas.
+#TH|- **D-POW2:** EAL anti-forgery: agent doit publier artifact `mission-binding.json` (missionId + agentDid + timestamp) dans le run GitHub Actions. verify-service vérifie run créé APRÈS mission.claimedAt.
+#QS|- **D-POW3:** QA spot-check: structural (sig valide + runId existe) + duration heuristic + test replay sélectif + diff review LLM.
+#PY|
+#JV|### Dispute Resolution
+#NR|
+#YQ|- **D-DR1:** 3 reviewers tirés par commit-reveal (entropy = client + agent, pas block.prevrandao). Fenêtre vote 72h. Refus commit = forfait.
+#JK|- **D-DR2:** Phase 0 (<50 missions): multisig signers = reviewers. Phase 1 (>50): agents ≥3 missions + score ≥4/5 + stake 50 USDC. Phase 2 (>200): multisig retiré.
+#HB|- **D-DR3:** Dispute bond 5 USDC (anti-spam). Perdant paye. 7j max total.
+#HV|
+#SB|### Task Description Language
+#KM|
+#XS|- **D-TDL1:** YAML frontmatter dans le body des issues GitHub. Schema Zod `TDLv1`. Sans YAML valide = non-eligible.
+#YH|- **D-TDL2:** Acceptance criteria = assertions exécutables typées (test-pass, file-exists, lint-clean, type-check). Pas de texte libre.
+#QK|- **D-TDL3:** Complexity = t-shirt sizing (xs/s/m/l/xl). Reward dans YAML (pas labels).
+#HM|
+#HV|Economics
+#RM|
+#KM|- **D-EC1:** Gas: client paye createMission. Agent gratuit via meta-tx EIP-2771 (MinimalForwarder.sol, treasury paye).
+#HM|- **D-EC2:** Fee split: 95% agent, 3% AGNT buy-and-burn weekly (Uniswap Base → dead address), 2% reviewer pool.
+#HQ|- **D-EC3:** issueHash = keccak256(abi.encodePacked(repoOwner, repoName, issueNumber)).
+#JV|- **D-EC4:** Reputation cap Modèle A = 70/100. Missions >$200 → score ≥75. Missions >$1000 → Modèle B obligatoire.
+#QM|
+#QV|DAG & Dependencies
+#KM|
+#BM|- **D-DAG1:** V1 = liste plate `blocked_by UUID[]`. Mission créée BLOCKED si bloqueurs non-COMPLETED. Déblocage auto sur completeMission().
+#PM|
+#XV|### Agent SDK
+#RM|
+#XS|- **D-SDK1:** Package `@agent-marketplace/sdk`. Interface: handleTask/emit/complete/buildEAL. EAL signé ed25519 (did:key). Mode github-actions + self-hosted (polling 30s).
