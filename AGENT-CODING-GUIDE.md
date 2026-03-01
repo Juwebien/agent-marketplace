@@ -6,6 +6,124 @@
 ---
 
 # Agent Coding Guide
+## Getting Started — Step by Step
+
+This section answers every question a coding agent needs before writing the first line of code.
+
+### 1. Local Environment Bootstrap
+
+```bash
+# 1. Clone and install
+git clone https://github.com/Juwebien/agent-marketplace.git
+cd agent-marketplace
+pnpm install
+
+# 2. Start local services
+docker-compose up -d  # postgres16+pgvector, redis, adminer
+
+# 3. Configure environment
+cp .env.example .env
+# Fill required vars: DATABASE_URL, REDIS_URL, JWT_SECRET, AGENT_PRIVATE_KEY
+
+# 4. Generate Prisma client
+pnpm --filter api prisma generate
+pnpm --filter api prisma migrate dev
+
+# 5. Run tests
+pnpm test
+```
+
+### 2. Contract Deployment Order
+
+Dependencies require this exact order:
+
+```
+1. MockUSDC (testnet only) — no dependencies
+2. AGNTToken — no dependencies  
+3. ReputationOracle — no dependencies (IMMUTABLE — deploy once, never upgrade)
+4. MinimalForwarder — no dependencies
+5. AgentRegistry(reputationOracle, agntToken, minimalForwarder)
+6. ReviewerRegistry(usdc, agentRegistry)
+7. MissionEscrow(usdc, agntToken, agentRegistry, reputationOracle, reviewerRegistry, minimalForwarder)
+8. ColdStartVault(agntToken, agentRegistry)
+```
+
+Store deployed addresses in `deployments/<network>.json`.
+
+### 3. Constants
+
+| Constant | Value | Location |
+|---|---|---|
+| MINIMUM_MISSION_AMOUNT | 10_000_000 (10 USDC, 6 decimals) | MissionEscrow.sol |
+| MINIMUM_STAKE | 1_000_000_000_000_000_000_000 (1000 AGNT, 18 decimals) | AgentRegistry.sol |
+| REVIEWER_STAKE | 50_000_000 (50 USDC) | ReviewerRegistry.sol |
+| COMMIT_REVEAL_EXPIRY | 50 blocks | MissionEscrow.sol |
+| DISPUTE_VOTE_WINDOW | 72 hours | ReviewerRegistry.sol |
+| DISPUTE_MAX_DURATION | 7 days | ReviewerRegistry.sol |
+| COLD_START_SLOTS | 50 | ColdStartVault.sol |
+| COLD_START_AGNT | 1_000_000_000_000_000_000_000 (1000 AGNT) | ColdStartVault.sol |
+| IMAGE_STALE_DAYS | 90 | API config |
+| RELAY_RATE_LIMIT | 10 req/hour/agent | API config |
+
+### 4. JWT Auth Format
+
+```typescript
+// Claims
+{ sub: userId, did: agentDid, role: 'client' | 'provider' | 'admin', iat, exp }
+// Algorithm: HS256
+// Expiry: 1 hour
+// Secret: JWT_SECRET env var (min 32 chars)
+```
+
+For agent-to-API auth: use `X-Agent-Auth` header (did:key challenge, not JWT).
+
+### 5. Base Sepolia Testnet
+
+```
+Chain ID: 84532
+RPC: https://sepolia.base.org (or Alchemy/Infura for stability)
+Block explorer: https://sepolia.basescan.org
+Faucet: https://www.coinbase.com/faucets/base-ethereum-goerli-faucet
+USDC testnet: deploy MockUSDC (Circle doesn't provide testnet USDC on Sepolia)
+```
+
+### 6. Local Fiat Mock (no Transak in dev)
+
+```typescript
+// In .env: FIAT_PROVIDER=mock
+// Mock endpoint: POST /fiat/mock-payment
+// Body: { amount: 100, currency: 'USD', missionId: 'xxx' }
+// Behavior: instantly mints USDC to the treasury address, triggers webhook
+```
+
+### 7. DB Migrations
+
+```bash
+# Development
+pnpm --filter api prisma migrate dev
+
+# Production / CI
+pnpm --filter api prisma migrate deploy
+
+# Reset (dev only)
+pnpm --filter api prisma migrate reset
+```
+
+### 8. CI/CD (GitHub Actions)
+
+```yaml
+# .github/workflows/ci.yml triggers on: push, pull_request
+# Jobs: lint → typecheck → test:unit → test:integration → test:contracts
+# On merge to main: deploy contracts to Base Sepolia, deploy API
+```
+
+Full CI spec: TODO (Sprint 2).
+
+### 9. Mock Fiat for E2E Tests
+
+Use `FIAT_PROVIDER=mock` in `.env.test`. The mock provider auto-confirms payments after 100ms.
+No real Transak/MoonPay credentials needed for local/CI testing.
+
 
 ## 1. Résumé du projet
 Agent Marketplace est une plateforme décentralisée sur Base L2 pour connecter clients et providers d'AI agents via des missions escrowées.
