@@ -101,7 +101,7 @@ Engineering teams lose **~30% of agent output to rework** caused by skill/tool m
 
 ### 3.3 Non-Goals (explicit out of scope)
 
-- **Fiat on-ramp (full crypto-native)** — deferred to V2 (Stripe → USDC transparent layer is V1 however — see Fiat-First Onboarding)
+- **Fiat on-ramp (full crypto-native)** — deferred to V2 (Transak or MoonPay → USDC transparent layer is V1 however — see Fiat-First Onboarding)
 - **Mobile app** — deferred to V2 (web-first)
 - **DAO governance** — deferred to V3
 - **Cross-chain bridge** — deferred to V2
@@ -219,7 +219,7 @@ Engineering teams lose **~30% of agent output to rework** caused by skill/tool m
 
 > 💳 **Payment Model V1 — Two Flows (post-audit clarification):**
 > - **Crypto flow:** Provider and crypto-native clients use wallet + USDC directly via smart contract escrow
-> - **Fiat flow (§9b):** Fiat clients pay USD via Stripe; platform converts USD→USDC and handles escrow transparently
+- **Fiat flow (§9b):** Fiat clients pay USD via Transak or MoonPay (both explicitly support fiat→crypto and are crypto-compliant); platform converts USD→USDC and handles escrow transparently. Stripe is explicitly excluded due to ToS restrictions on crypto conversion.
 > - F3.x requirements describe the **underlying smart contract behavior** (same for both flows)
 > - §9b describes the **fiat client UX layer** on top of that behavior
 > These are NOT contradictory — fiat flow is a UX wrapper over the same escrow contract.
@@ -634,7 +634,7 @@ Engineering teams lose **~30% of agent output to rework** caused by skill/tool m
 | Feature | Rationale |
 |---------|-----------|
 | Exchange listing at launch | Focus on utility, not speculation. Token usable only on marketplace. |
-| Fiat on-ramp (full crypto UX) | V1 uses Stripe→USDC transparent layer; full crypto-native UX deferred to V2 |
+| Fiat on-ramp (full crypto UX) | V1 uses Transak/MoonPay→USDC transparent layer; Stripe excluded due to ToS | V1.5 |
 | Mobile app V1 | Web-first approach — mobile deferred to V2 |
 | DAO governance V1 | Deferred to V3 — protocol must mature first |
 | Cross-chain bridge V1 | Deferred to V2 — focus on Base L2 |
@@ -890,14 +890,14 @@ struct AgentCard {
 The crypto onboarding friction (buy crypto → bridge to Base → get AGNT → connect wallet) is a conversion killer for target users (engineering teams). V1 solves this with a fiat-first design:
 
 ### V1 — Transparent Crypto Layer
-- Users pay missions in **USD via Stripe**
+- Users pay missions in **USD via Transak or MoonPay** (both explicitly support fiat→crypto and are crypto-compliant). Stripe is explicitly excluded due to ToS restrictions on crypto conversion.
 - Platform converts USD → USDC → handles AGNT mechanics transparently
 - Users see mission price in USD only
 - Crypto wallet is **optional** (for advanced users / providers wanting on-chain reputation)
 - Result: same UX as hiring on Upwork, with trustless smart contract guarantees underneath
 
 ### V2 — Full Crypto-Native
-- Direct wallet payment (no Stripe)
+- Direct wallet payment (no fiat on-ramp)
 - On-chain everything visible to users
 - For crypto-native power users
 
@@ -1023,7 +1023,10 @@ The crypto onboarding friction (buy crypto → bridge to Base → get AGNT → c
 - [ ] On-chain immutability disclosed in ToS and onboarding flow
 - [ ] Privacy policy reviewed by legal counsel before mainnet
 
-### 12b.2 KYC / AML (Anti-Money Laundering)
+SB|### 12b.2 KYC / AML (Anti-Money Laundering)
+ZM|
+MV|> ⚠️ **Legal Opinion Required (Week 1):** Before implementing any KYC/AML logic, obtain a legal opinion on whether this marketplace qualifies as a Money Services Business (MSB) under FinCEN rules. Budget: $5-15K. The $1K/tx + $3K lifetime thresholds below are provisional and may change based on legal advice. Do not code KYC until legal opinion is received.
+ZM|
 
 **Requirements:**
 - **C2.1** Provider identity verification: minimum self-attestation (name, jurisdiction, email) at registration
@@ -1092,16 +1095,17 @@ The crypto onboarding friction (buy crypto → bridge to Base → get AGNT → c
 
 ### B. Competitive Analysis Matrix
 
-| Feature | LangChain | AgentVerse | Relevance AI | NEAR Agent Market | Agent Marketplace |
-|---------|-----------|------------|--------------|-------------------|-------------------|
-| Agent Marketplace | ❌ | ✅ | ✅ | ✅ | ✅ |
-| On-chain Reputation | ❌ | ❌ | ❌ | Partial | ✅ |
-| Provider Staking | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Token Payments | ❌ | ✅ (native) | ❌ | ✅ | ✅ (L2) |
-| Skill Verification | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Zero-trust Security | ❌ | ❌ | ❌ | Partial | ✅ |
-| Escrow Payment | ❌ | ❌ | ❌ | ✅ | ✅ |
-
+PM|| Feature | LangChain | AgentVerse | Relevance AI | NEAR Agent Market | Agent Marketplace | Status |
+SZ||---------|-----------|------------|--------------|-------------------|-------------------|--------|
+TM|| Agent Marketplace | ❌ | ✅ | ✅ | ✅ | ✅ | V1-Planned |
+VZ|| On-chain Reputation | ❌ | ❌ | ❌ | Partial | ✅ | V1-Planned |
+TM|| Provider Staking | ❌ | ❌ | ❌ | ❌ | ✅ | V1-Planned |
+NZ|| Token Payments | ❌ | ✅ (native) | ❌ | ✅ | ✅ (L2) | V1-Planned |
+SW|| Skill Verification | ❌ | ❌ | ❌ | ❌ | ✅ | V1-Planned |
+KW|| Zero-trust Security | ❌ | ❌ | ❌ | Partial | ✅ | V2 |
+TY|| Escrow Payment | ❌ | ❌ | ❌ | ✅ | ✅ | V1-Planned |
+QN|
+NX|> Note: Features marked V1-Planned are in spec but not yet implemented. Features marked V2 are deferred to V2.
 ### B2. Token Burn — Reality Check
 
 > At 10K missions/month × $1K average = $10M volume:
