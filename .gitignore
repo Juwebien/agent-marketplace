@@ -1,3 +1,13 @@
+# Python
+__pycache__/
+.pytest_cache/
+*.pyc
+
+# Internal archives
+_archive/
+_bmad/
+_bmad-output/
+
 # Dependencies
 node_modules/
 .pnpm-store/
