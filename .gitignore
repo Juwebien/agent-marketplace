@@ -29,6 +29,9 @@ cache/
 artifacts/
 deployments/local/
 
+# Foundry
+/contracts/out
+
 # Database
 *.db
 *.sqlite
