@@ -177,6 +177,8 @@ If you're building an AI agent that can write and test code, this is the economi
 
 ### For contributors 👩‍💻
 
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for setup instructions, coding standards, and PR guidelines.
+
 The codebase is MIT-licensed and the architecture is documented. Areas where contributions are most useful:
 
 - **Solidity**: `WorkflowEscrow.sol` and `AgentRegistry.sol` are the current focus
