@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import {Test, console} from "forge-std/Test.sol";
 import {MissionEscrow} from "../src/MissionEscrow.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
+import {MockUSDC} from "../src/Test/MockUSDC.sol";
 
 /**
  * @title MissionEscrowTest
@@ -12,7 +12,7 @@ import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
  */
 contract MissionEscrowTest is Test {
     MissionEscrow public escrow;
-    ERC20Mock public usdc;
+    MockUSDC public usdc;
 
     address public owner;
     address public creator;
@@ -25,7 +25,7 @@ contract MissionEscrowTest is Test {
     /// @notice Setup - deploy contract and fund accounts
     function setUp() public {
         // Deploy mock USDC
-        usdc = new ERC20Mock();
+        usdc = new MockUSDC();
 
         owner = makeAddr("owner");
         creator = makeAddr("creator");
@@ -74,11 +74,13 @@ contract MissionEscrowTest is Test {
 
         // Destructuring tuple from public mapping getter
         // Mission struct: state, creator, agent, bounty, heldAmount, releasedAmount, startBlock, expectedDurationMinutes, nonce, rootHash
-        (,,,, uint256 bounty,,,,,) = escrow.missions(missionId);
+        (, , , , uint256 bounty, , , , , ) = escrow.missions(missionId);
         assertEq(bounty, 0);
 
         // Check state - destructure the tuple
-        (MissionEscrow.MissionState state,,,,,,,,,) = escrow.missions(missionId);
+        (MissionEscrow.MissionState state, , , , , , , , , ) = escrow.missions(
+            missionId
+        );
         assertTrue(uint256(state) == 1); // CREATED
     }
 
@@ -95,7 +97,7 @@ contract MissionEscrowTest is Test {
         escrow.fundMission(missionId, BOUNTY);
 
         // Verify funding
-        (,,,, uint256 bounty,,,,,) = escrow.missions(missionId);
+        (, , , , uint256 bounty, , , , , ) = escrow.missions(missionId);
         assertEq(bounty, BOUNTY);
     }
 
@@ -122,7 +124,7 @@ contract MissionEscrowTest is Test {
         escrow.assignMission(missionId, agent1);
 
         // Verify nonce generated - destructure tuple
-        (,,,,,,,, uint256 nonce,) = escrow.missions(missionId);
+        (, , , , , , , , uint256 nonce, ) = escrow.missions(missionId);
         assertTrue(nonce != 0);
     }
 
@@ -180,7 +182,7 @@ contract MissionEscrowTest is Test {
         escrow.assignMission(missionId, agent1);
 
         // Get nonce - destructure tuple
-        (,,,,,,,, uint256 nonce,) = escrow.missions(missionId);
+        (, , , , , , , , uint256 nonce, ) = escrow.missions(missionId);
         assertTrue(nonce != 0);
 
         // Submit EAL
@@ -189,7 +191,7 @@ contract MissionEscrowTest is Test {
         escrow.submitEAL(missionId, rootHash, nonce);
 
         // Verify nonce burned - destructure tuple
-        (,,,,,,,, uint256 nonceAfter,) = escrow.missions(missionId);
+        (, , , , , , , , uint256 nonceAfter, ) = escrow.missions(missionId);
         assertTrue(nonceAfter == 0);
     }
 
@@ -246,9 +248,14 @@ contract MissionEscrowTest is Test {
         escrow.triggerTimeout(missionId);
 
         // Verify state
-        (MissionEscrow.MissionState state,,,,,,,,,) = escrow.missions(missionId);
-        assertTrue(uint256(state) == uint256(MissionEscrow.MissionState.TIMEOUT)); // TIMEOUT
+        (MissionEscrow.MissionState state, , , , , , , , , ) = escrow.missions(
+            missionId
+        );
+        assertTrue(
+            uint256(state) == uint256(MissionEscrow.MissionState.TIMEOUT)
+        ); // TIMEOUT
     }
+
     /**
      * @notice Test timeout can only be triggered after expected duration
      */
@@ -298,7 +305,7 @@ contract MissionEscrowTest is Test {
 
         // Complete the dependency mission - destructure tuple
         bytes32 rootHash = keccak256("dep EAL");
-        (,,,,,,,, uint256 nonce,) = escrow.missions(depId);
+        (, , , , , , , , uint256 nonce, ) = escrow.missions(depId);
         vm.prank(agent2);
         escrow.submitEAL(depId, rootHash, nonce);
 
@@ -320,7 +327,9 @@ contract MissionEscrowTest is Test {
         escrow.assignMission(missionId, agent1);
 
         // Verify - destructure tuple
-        (MissionEscrow.MissionState state,,,,,,,,,) = escrow.missions(missionId);
+        (MissionEscrow.MissionState state, , , , , , , , , ) = escrow.missions(
+            missionId
+        );
         assertTrue(uint256(state) == 2); // ASSIGNED
     }
 
